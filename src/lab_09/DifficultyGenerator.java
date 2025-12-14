@@ -4,42 +4,41 @@ import java.util.Random;
 
 public class DifficultyGenerator {
 
-    public int[][] generate(int[][] solved, Difficulty level) {
+    public int[][] makePuzzle(int[][] solved, Difficulty level) {
 
-        int remove;
+        int empty;
         switch (level) {
             case EASY ->
-                remove = 10;
+                empty = 10;
             case MEDIUM ->
-                remove = 20;
+                empty = 25;
             case HARD ->
-                remove = 30;
+                empty = 20;
             default ->
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("Unknown difficulty");
         }
 
-        int[][] board = copy(solved);
+        int[][] puzzle = copy(solved);
         Random rnd = new Random(System.currentTimeMillis());
 
         int removed = 0;
-        while (removed < remove) {
+        while (removed < empty) {
             int r = rnd.nextInt(9);
             int c = rnd.nextInt(9);
-
-            if (board[r][c] != 0) {
-                board[r][c] = 0;
+            if (puzzle[r][c] != 0) {
+                puzzle[r][c] = 0;
                 removed++;
             }
         }
 
-        return board;
+        return puzzle;
     }
 
     private int[][] copy(int[][] src) {
-        int[][] c = new int[9][9];
+        int[][] out = new int[9][9];
         for (int i = 0; i < 9; i++) {
-            System.arraycopy(src[i], 0, c[i], 0, 9);
+            System.arraycopy(src[i], 0, out[i], 0, 9);
         }
-        return c;
+        return out;
     }
 }

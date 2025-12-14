@@ -6,8 +6,6 @@ public interface Controllable {
 
     int[][] getGame(char level) throws Exception;
 
-    void driveGames(int[][] solvedBoard) throws Exception;
-
     String verifyGame(int[][] game);
 
     int[] solveGame(int[][] game) throws Exception;
@@ -18,6 +16,5 @@ public interface Controllable {
 
     void clearCurrentGame() throws Exception;
 
-    // ✅ NEW
     boolean isCorrectMove(int r, int c, int val) throws Exception;
 }

@@ -11,7 +11,6 @@ public class SudokuController implements Controllable {
         return storage.getCatalog();
     }
 
-    // ✅ ONLY for generating NEW games
     @Override
     public int[][] getGame(char level) throws Exception {
         Difficulty d = switch (Character.toUpperCase(level)) {
@@ -26,19 +25,12 @@ public class SudokuController implements Controllable {
         };
 
         int[][] game = driver.generateNewGame(d);
-        storage.saveCurrentGame(game);
         undo.clearLog();
         return game;
     }
 
-    // ✅ NEW: load unfinished current game
     public int[][] loadCurrentGame() throws Exception {
         return storage.loadCurrentGame();
-    }
-
-    @Override
-    public void driveGames(int[][] solvedBoard) throws Exception {
-        driver.driveGamesFromSolved(solvedBoard);
     }
 
     @Override
@@ -48,7 +40,7 @@ public class SudokuController implements Controllable {
 
     @Override
     public int[] solveGame(int[][] game) throws Exception {
-        driver.solveGame(game);
+        driver.solveGame(game); // يملأ المصفوفة
         storage.saveCurrentGame(game);
         undo.clearLog();
         return null;

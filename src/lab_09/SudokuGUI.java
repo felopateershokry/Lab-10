@@ -11,18 +11,26 @@ public class SudokuGUI extends JFrame {
     private JTextField selectedCell = null;
 
     private final JButton verifyBtn = new JButton("Verify");
-    private final JButton checkBtn = new JButton("Check Move");
     private final JButton solveBtn = new JButton("Solve");
     private final JButton undoBtn = new JButton("Undo");
     private final JButton newBtn = new JButton("New Game");
 
     private final Controllable controller;
 
+    // ================= COLORS =================
+    private static final Color BG_FIXED = Color.WHITE;
+    private static final Color BG_EMPTY = new Color(220, 220, 220);
+    private static final Color BG_SELECTED = new Color(180, 205, 255);
+    private static final Color BG_CORRECT = new Color(170, 235, 170); // GREEN
+    private static final Color BG_WRONG = new Color(245, 170, 170);   // RED
+    private static final Color BG_HIGHLIGHT = new Color(200, 200, 200);
+    private static final Color BG_SAME_NUM = new Color(255, 255, 180);
+
     public SudokuGUI(Controllable controller) throws Exception {
         this.controller = controller;
 
         setTitle("Sudoku");
-        setSize(800, 560);
+        setSize(820, 580);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -34,42 +42,8 @@ public class SudokuGUI extends JFrame {
 
     // ================= STARTUP =================
     private void loadInitialGame() throws Exception {
-        Catalog cat = controller.getCatalog();
-
-        // 1️⃣ If unfinished game exists → ask user
-        if (cat.hasCurrent) {
-
-            int choice = JOptionPane.showOptionDialog(
-                    this,
-                    "You have an unfinished game.\nWhat do you want to do?",
-                    "Resume Game",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    new Object[]{"Resume", "New Game"},
-                    "Resume"
-            );
-
-            // Resume old game
-            if (choice == 0) {
-                int[][] cur = ((SudokuController) controller).loadCurrentGame();
-                loadBoard(cur);
-                return;
-            }
-
-            // New game → clear old one
-            controller.clearCurrentGame();
-        }
-
-        // 2️⃣ If solved board exists → ALWAYS ask difficulty
-        if (cat.hasSolved) {
-            char diff = askDifficulty();
-            loadBoard(controller.getGame(diff));
-            return;
-        }
-
-        // 3️⃣ No solved board → upload one
-        uploadSolvedBoard();
+        char diff = askDifficulty();
+        loadBoard(controller.getGame(diff));
     }
 
     private char askDifficulty() {
@@ -87,37 +61,25 @@ public class SudokuGUI extends JFrame {
         return options[c].toString().charAt(0);
     }
 
-    private void uploadSolvedBoard() throws Exception {
-        JFileChooser fc = new JFileChooser();
-        if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
-            System.exit(0);
-        }
-
-        int[][] solved = CsvReader.readBoard(
-                fc.getSelectedFile().getAbsolutePath()
-        );
-
-        controller.driveGames(solved);
-
-        char diff = askDifficulty();
-        loadBoard(controller.getGame(diff));
-    }
-
     // ================= UI =================
     private void initUI() {
         JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(Color.WHITE);
 
-        // -------- Grid --------
+        // ---------- GRID ----------
         JPanel grid = new JPanel(new GridLayout(9, 9));
-        Font font = new Font("Arial", Font.BOLD, 18);
+        grid.setBackground(Color.BLACK);
+
+        Font cellFont = new Font("Segoe UI", Font.BOLD, 18);
 
         for (int r = 0; r < 9; r++) {
             for (int c = 0; c < 9; c++) {
 
                 JTextField tf = new JTextField();
                 tf.setHorizontalAlignment(JTextField.CENTER);
-                tf.setFont(font);
+                tf.setFont(cellFont);
                 tf.setEditable(false);
+                tf.setForeground(Color.BLACK);
 
                 int top = (r % 3 == 0) ? 2 : 1;
                 int left = (c % 3 == 0) ? 2 : 1;
@@ -125,11 +87,9 @@ public class SudokuGUI extends JFrame {
                 int right = (c == 8) ? 2 : 1;
 
                 tf.setBorder(BorderFactory.createMatteBorder(
-                        top, left, bottom, right, Color.BLACK
-                ));
+                        top, left, bottom, right, Color.BLACK));
 
                 tf.addMouseListener(new MouseAdapter() {
-                    @Override
                     public void mouseClicked(MouseEvent e) {
                         selectCell(tf);
                     }
@@ -140,72 +100,104 @@ public class SudokuGUI extends JFrame {
             }
         }
 
-        // -------- Number Pad --------
-        JPanel numbers = new JPanel(new GridLayout(6, 2, 6, 6));
-        numbers.setBorder(BorderFactory.createTitledBorder("Numbers"));
+        // ---------- NUMBER PAD ----------
+        JPanel numbersWrap = new JPanel(new BorderLayout());
+        numbersWrap.setBackground(Color.WHITE);
+        numbersWrap.setPreferredSize(new Dimension(300, 450));
+        numbersWrap.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        JLabel title = new JLabel("Numbers", SwingConstants.CENTER);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        numbersWrap.add(title, BorderLayout.NORTH);
+
+        JPanel numbers = new JPanel(new GridLayout(4, 3, 10, 10));
+        numbers.setBackground(Color.WHITE);
+
+        Font btnFont = new Font("Segoe UI", Font.BOLD, 20);
 
         for (int i = 1; i <= 9; i++) {
             int num = i;
-            JButton b = new JButton(String.valueOf(i));
+            JButton b = createNumberButton(String.valueOf(i), btnFont);
             b.addActionListener(e -> placeNumber(num));
             numbers.add(b);
         }
 
-        JButton clearBtn = new JButton("Clear");
+        JButton clearBtn = createNumberButton(
+                "Clear",
+                new Font("Segoe UI", Font.BOLD, 18)
+        );
         clearBtn.addActionListener(e -> clearCell());
+
+        numbers.add(new JLabel());
         numbers.add(clearBtn);
         numbers.add(new JLabel());
 
-        // -------- Bottom Buttons --------
+        numbersWrap.add(numbers, BorderLayout.CENTER);
+
+        // ---------- BOTTOM ----------
         JPanel bottom = new JPanel();
+        bottom.setBackground(Color.WHITE);
+
         solveBtn.setEnabled(false);
 
         bottom.add(verifyBtn);
-        bottom.add(checkBtn);
         bottom.add(solveBtn);
         bottom.add(undoBtn);
         bottom.add(newBtn);
 
         verifyBtn.addActionListener(e -> verifyBoard());
-        checkBtn.addActionListener(e -> checkMove());
         solveBtn.addActionListener(e -> solveBoard());
         undoBtn.addActionListener(e -> undoMove());
         newBtn.addActionListener(e -> startNewGame());
 
         main.add(grid, BorderLayout.CENTER);
-        main.add(numbers, BorderLayout.EAST);
+        main.add(numbersWrap, BorderLayout.EAST);
         main.add(bottom, BorderLayout.SOUTH);
 
         add(main);
+    }
+
+    private JButton createNumberButton(String text, Font font) {
+        JButton b = new JButton(text);
+        b.setFont(font);
+        b.setFocusPainted(false);
+        b.setBackground(Color.WHITE);
+        b.setForeground(Color.BLACK);
+        b.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        b.setPreferredSize(new Dimension(100, 70));
+
+        b.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                b.setBackground(Color.BLACK);
+                b.setForeground(Color.WHITE);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                b.setBackground(Color.WHITE);
+                b.setForeground(Color.BLACK);
+            }
+        });
+        return b;
     }
 
     // ================= BOARD =================
     private void loadBoard(int[][] board) {
         for (int r = 0; r < 9; r++) {
             for (int c = 0; c < 9; c++) {
+
                 if (board[r][c] == 0) {
                     cells[r][c].setText("");
+                    cells[r][c].setBackground(BG_EMPTY);
                     fixed[r][c] = false;
                 } else {
                     cells[r][c].setText(String.valueOf(board[r][c]));
+                    cells[r][c].setBackground(BG_FIXED);
                     fixed[r][c] = true;
                 }
-                cells[r][c].setBackground(Color.WHITE);
             }
         }
         checkSolveAvailability();
-    }
-
-    private int[][] readBoard() {
-        int[][] b = new int[9][9];
-        for (int r = 0; r < 9; r++) {
-            for (int c = 0; c < 9; c++) {
-                b[r][c] = cells[r][c].getText().isEmpty()
-                        ? 0
-                        : Integer.parseInt(cells[r][c].getText());
-            }
-        }
-        return b;
     }
 
     // ================= ACTIONS =================
@@ -219,14 +211,15 @@ public class SudokuGUI extends JFrame {
             return;
         }
 
-        int prev = selectedCell.getText().isEmpty()
-                ? 0
-                : Integer.parseInt(selectedCell.getText());
-
         selectedCell.setText(String.valueOf(num));
 
         try {
-            controller.logUserAction(readBoard(), p.x, p.y, num, prev);
+            controller.logUserAction(readBoard(), p.x, p.y, num, 0);
+            boolean correct = controller.isCorrectMove(p.x, p.y, num);
+
+            highlightContext(p.x, p.y);
+            selectedCell.setBackground(correct ? BG_CORRECT : BG_WRONG);
+
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, e.getMessage());
         }
@@ -244,27 +237,16 @@ public class SudokuGUI extends JFrame {
             return;
         }
 
-        int prev = selectedCell.getText().isEmpty()
-                ? 0
-                : Integer.parseInt(selectedCell.getText());
-
         selectedCell.setText("");
-
-        try {
-            controller.logUserAction(readBoard(), p.x, p.y, 0, prev);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, e.getMessage());
-        }
-
+        selectedCell.setBackground(BG_EMPTY);
+        highlightContext(p.x, p.y);
         checkSolveAvailability();
     }
 
     private void undoMove() {
         try {
             int[][] board = readBoard();
-            boolean ok = controller.undoLastAction(board);
-
-            if (!ok) {
+            if (!controller.undoLastAction(board)) {
                 JOptionPane.showMessageDialog(this, "Nothing to undo");
                 return;
             }
@@ -275,60 +257,47 @@ public class SudokuGUI extends JFrame {
     }
 
     private void verifyBoard() {
-        String res = controller.verifyGame(readBoard());
-        JOptionPane.showMessageDialog(this, res);
-
-        if ("VALID".equals(res)) {
-            startNewGame();
-        }
-    }
-
-    private void checkMove() {
-        if (selectedCell == null) {
-            JOptionPane.showMessageDialog(this, "Select a cell first.");
-            return;
-        }
-
-        Point p = findCell(selectedCell);
-        if (fixed[p.x][p.y]) {
-            JOptionPane.showMessageDialog(this, "Fixed cell.");
-            return;
-        }
-
-        if (selectedCell.getText().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Cell is empty.");
-            return;
-        }
-
-        int val = Integer.parseInt(selectedCell.getText());
-
-        try {
-            boolean ok = controller.isCorrectMove(p.x, p.y, val);
-            selectedCell.setBackground(ok ? Color.GREEN : Color.PINK);
-            JOptionPane.showMessageDialog(this, ok ? "Correct ✔" : "Wrong ✖");
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, e.getMessage());
-        }
+        JOptionPane.showMessageDialog(this, controller.verifyGame(readBoard()));
     }
 
     private void solveBoard() {
         try {
             int[][] board = readBoard();
+
+            // 🔴 تحقق من كل القيم المدخلة يدويًا
+            for (int r = 0; r < 9; r++) {
+                for (int c = 0; c < 9; c++) {
+                    if (!fixed[r][c] && board[r][c] != 0) {
+                        if (!controller.isCorrectMove(r, c, board[r][c])) {
+                            JOptionPane.showMessageDialog(
+                                    this,
+                                    "You have incorrect entries.\nFix them before solving.",
+                                    "Cannot Solve",
+                                    JOptionPane.ERROR_MESSAGE
+                            );
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // ✅ لو وصل هنا يبقى كل المدخلات صح
             controller.solveGame(board);
             loadBoard(board);
-            JOptionPane.showMessageDialog(this, "Solved successfully ✔");
-            startNewGame();
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Solved successfully ✔",
+                    "Solved",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, e.getMessage());
         }
     }
 
     private void startNewGame() {
-        try {
-            controller.clearCurrentGame();
-        } catch (Exception ignored) {
-        }
-
         dispose();
         try {
             new SudokuGUI(new SudokuController());
@@ -337,15 +306,82 @@ public class SudokuGUI extends JFrame {
         }
     }
 
-    // ================= HELPERS =================
+    // ================= HIGHLIGHT =================
     private void selectCell(JTextField tf) {
-        for (var row : cells) {
-            for (var c : row) {
-                c.setBackground(Color.WHITE);
+        selectedCell = tf;
+        Point p = findCell(tf);
+        highlightContext(p.x, p.y);
+    }
+
+    private void highlightContext(int r, int c) {
+        resetHighlights();
+
+        for (int i = 0; i < 9; i++) {
+            highlightCell(r, i);
+            highlightCell(i, c);
+        }
+
+        int br = (r / 3) * 3;
+        int bc = (c / 3) * 3;
+        for (int i = br; i < br + 3; i++) {
+            for (int j = bc; j < bc + 3; j++) {
+                highlightCell(i, j);
             }
         }
-        selectedCell = tf;
-        tf.setBackground(Color.CYAN);
+
+        String val = cells[r][c].getText();
+        if (!val.isEmpty()) {
+            highlightSame(val);
+        }
+
+        Color current = cells[r][c].getBackground();
+        if (!current.equals(BG_CORRECT) && !current.equals(BG_WRONG)) {
+            cells[r][c].setBackground(BG_SELECTED);
+        }
+    }
+
+    private void highlightCell(int r, int c) {
+        JTextField cell = cells[r][c];
+        Color bg = cell.getBackground();
+
+        if (bg.equals(BG_CORRECT) || bg.equals(BG_WRONG) || bg.equals(BG_SELECTED)) {
+            return;
+        }
+        cell.setBackground(BG_HIGHLIGHT);
+    }
+
+    private void highlightSame(String value) {
+        for (int r = 0; r < 9; r++) {
+            for (int c = 0; c < 9; c++) {
+                if (value.equals(cells[r][c].getText())) {
+                    cells[r][c].setBackground(BG_SAME_NUM);
+                }
+            }
+        }
+    }
+
+    private void resetHighlights() {
+        for (int r = 0; r < 9; r++) {
+            for (int c = 0; c < 9; c++) {
+                Color bg = cells[r][c].getBackground();
+                if (bg.equals(BG_CORRECT) || bg.equals(BG_WRONG)) {
+                    continue;
+                }
+                cells[r][c].setBackground(fixed[r][c] ? BG_FIXED : BG_EMPTY);
+            }
+        }
+    }
+
+    // ================= HELPERS =================
+    private int[][] readBoard() {
+        int[][] b = new int[9][9];
+        for (int r = 0; r < 9; r++) {
+            for (int c = 0; c < 9; c++) {
+                b[r][c] = cells[r][c].getText().isEmpty()
+                        ? 0 : Integer.parseInt(cells[r][c].getText());
+            }
+        }
+        return b;
     }
 
     private Point findCell(JTextField tf) {
